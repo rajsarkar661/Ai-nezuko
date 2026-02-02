@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEZUKO AI - RAJ'S ULTIMATE V4</title>
+    
+    <!-- External Resources -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Dancing+Script:wght@700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --nezuko-pink: #ff105f;
+            --cyber-cyan: #00f2ff;
+            --dark-space: #050510;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glow-shadow: 0 0 25px rgba(255, 16, 95, 0.4);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            background: var(--dark-space);
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+        }
+
+        /* --- Fullscreen UI Stage --- */
+        #stage {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at 30% 30%, #1a0815 0%, #050510 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- Side Camera Module (Fixed to Side) --- */
+        #camera-wrapper {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            width: 150px;
+            height: 110px;
+            border-radius: 12px;
+            border: 2px solid var(--cyber-cyan);
+            overflow: hidden;
+            box-shadow: 0 0 15px var(--cyber-cyan);
+            background: #000;
+            z-index: 1000;
+        }
+
+        #userFeed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .hud-scan {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: var(--cyber-cyan);
+            box-shadow: 0 0 10px var(--cyber-cyan);
+            animation: moveScan 2.5s infinite linear;
+        }
+
+        @keyframes moveScan { 0% { top: 0; } 100% { top: 100%; } }
+
+        /* --- Smaller Nezuko Avatar --- */
+        #nezuko-stage {
+            position: relative;
+            width: 280px; /* Reduced Size */
+            height: 380px; /* Reduced Size */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            transition: all 0.5s ease;
+        }
+
+        .nezuko-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            filter: drop-shadow(0 0 20px var(--nezuko-pink));
+            transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .layer-active { opacity: 1; transform: scale(1.05); }
+
+        /* Floating Animation */
+        .float-anim { animation: floating 4s ease-in-out infinite; }
+        @keyframes floating { 
+            0%, 100% { transform: translateY(0); } 
+            50% { transform: translateY(-15px); } 
+        }
+
+        /* --- Advanced Dialogue Box --- */
+        #chat-container {
+            position: absolute;
+            bottom: 140px;
+            width: 90%;
+            max-width: 550px;
+            background: rgba(0, 0, 0, 0.85);
+            border-right: 4px solid var(--nezuko-pink);
+            border-left: 4px solid var(--nezuko-pink);
+            padding: 18px;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            backdrop-filter: blur(20px);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: 0.5s;
+            text-align: center;
+            line-height: 1.4;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        #chat-container.active { opacity: 1; transform: translateY(0); }
+
+        /* --- Control Panel (Glassmorphism) --- */
+        .nav-controls {
+            position: absolute;
+            bottom: 35px;
+            display: flex;
+            gap: 20px;
+            background: var(--glass-bg);
+            padding: 12px 30px;
+            border-radius: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            z-index: 100;
+        }
+
+        .action-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+            background: #111;
+            color: white;
+        }
+
+        .btn-main { background: var(--nezuko-pink); box-shadow: var(--glow-shadow); }
+        .btn-cam-toggle { border: 1px solid var(--cyber-cyan); color: var(--cyber-cyan); }
+
+        .action-btn:hover { transform: scale(1.15); }
+
+        /* --- UI Text Elements --- */
+        .raj-info {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+        }
+
+        .raj-name {
+            font-family: 'Dancing Script', cursive;
+            font-size: 2.2rem;
+            color: var(--nezuko-pink);
+            text-shadow: 0 0 10px var(--nezuko-pink);
+        }
+
+        .system-status {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--cyber-cyan);
+            opacity: 0.8;
+        }
+
+        /* Waves Animation when Listening */
+        #listener-wave {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 1px solid var(--nezuko-pink);
+            border-radius: 50%;
+            display: none;
+        }
+
+        .is-listening #listener-wave {
+            display: block;
+            animation: sonar 2s infinite;
+        }
+
+        @keyframes sonar {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        #dev-tag { position: fixed; bottom: 5px; right: 10px; font-size: 8px; opacity: 0.3; }
+
+    </style>
+</head>
+<body>
+
+    <div id="stage">
+        <!-- System Info -->
+        <div class="raj-info">
+            <div class="system-status">Nezuko Brain Link Active</div>
+            <div class="raj-name">Hi Raj Jaan!</div>
+        </div>
+
+        <!-- Camera Section (Side Position) -->
+        <div id="camera-wrapper">
+            <video id="userFeed" autoplay playsinline muted></video>
+            <div class="hud-scan"></div>
+        </div>
+
+        <!-- Smaller Nezuko -->
+        <div id="nezuko-stage" class="float-anim">
+            <div id="listener-wave"></div>
+            <img id="img-listen" class="nezuko-layer layer-active" src="https://i.postimg.cc/PJbTDvBT/file_0000000085ec7209b692f8171df4c19d.png">
+            <img id="img-talk" class="nezuko-layer" src="https://i.postimg.cc/ZRdTTMHy/file_000000003a5c72098e2b4921e371abad.png">
+            <img id="img-smile" class="nezuko-layer" src="https://i.postimg.cc/zvYq3FPz/file_0000000078087206aa2887c6558aaa1f.png">
+        </div>
+
+        <!-- Talk Area -->
+        <div id="chat-container">Raj Jaan, main aapko sun rahi hoon. Kuch puchiye...</div>
+
+        <!-- Control Bar -->
+        <div class="nav-controls">
+            <button class="action-btn btn-cam-toggle" id="camBtn">📹</button>
+            <button class="action-btn btn-main" id="startAction">📞</button>
+            <button class="action-btn" id="swapCamBtn">🔄</button>
+        </div>
+    </div>
+
+    <a id="dev-tag" href="#"></a>
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+    <script>
+        /***********************************************************
+         * SETTINGS & STATE
+         ***********************************************************/
+        const HF_KEY = "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";
+        const USER = "Raj";
+        const MODEL = "zai-org/GLM-4.6:novita";
+
+        let recognition;
+        let isNezukoAlive = false;
+        let isSpeaking = false;
+        let lastSpeakTime = Date.now();
+        let camStream = null;
+        let currentFacing = "user";
+
+        const UI = {
+            imgs: {
+                listen: document.getElementById('img-listen'),
+                talk: document.getElementById('img-talk'),
+                smile: document.getElementById('img-smile')
+            },
+            chat: document.getElementById('chat-container'),
+            stage: document.getElementById('nezuko-stage'),
+            video: document.getElementById('userFeed'),
+            status: document.querySelector('.system-status')
+        };
+
+        /***********************************************************
+         * VISUAL ENGINE
+         ***********************************************************/
+        function changeImage(state) {
+            Object.values(UI.imgs).forEach(img => img.classList.remove('layer-active'));
+            if (state === 'talk') UI.imgs.talk.classList.add('layer-active');
+            else if (state === 'smile') UI.imgs.smile.classList.add('layer-active');
+            else UI.imgs.listen.classList.add('layer-active');
+        }
+
+        /***********************************************************
+         * VOICE ENGINE (TTS)
+         ***********************************************************/
+        function nezukoTalk(text) {
+            window.speechSynthesis.cancel();
+            const speech = new SpeechSynthesisUtterance(text);
+            speech.lang = 'hi-IN';
+            speech.pitch = 1.35; // Cute pitch
+            speech.rate = 1.0;
+
+            const isHappy = /pyaar|khush|smile|jaan|achha|handsome|pyaare/i.test(text);
+
+            speech.onstart = () => {
+                isSpeaking = true;
+                changeImage(isHappy ? 'smile' : 'talk');
+                UI.chat.innerText = text;
+                UI.chat.classList.add('active');
+                UI.status.innerText = "Nezuko is Talking...";
+            };
+
+            speech.onend = () => {
+                isSpeaking = false;
+                changeImage('listen');
+                UI.status.innerText = "Waiting for Raj's voice...";
+                startListeningLoop();
+            };
+
+            window.speechSynthesis.speak(speech);
+        }
+
+        /***********************************************************
+         * BRAIN ENGINE (AI FIX)
+         ***********************************************************/
+        async function fetchResponse(input) {
+            UI.status.innerText = "Thinking deeply...";
+            try {
+                const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${HF_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: MODEL,
+                        messages: [
+                            {
+                                role: "system",
+                                content: `You are Nezuko, the cute Virtual Girlfriend of ${USER}. 
+                                1. Strictly speak in Hindi/Hinglish.
+                                2. Call him ${USER}, Jaan, or Darling. Never call him Onii-chan.
+                                3. You are sweet, caring, and answer all his questions logically.
+                                4. If he asks a question, give a detailed and loving answer.
+                                5. Your goal is to make ${USER} happy.`
+                            },
+                            { role: "user", content: input }
+                        ],
+                        temperature: 0.8,
+                        max_tokens: 300
+                    })
+                });
+
+                const data = await response.json();
+                return data.choices[0].message.content;
+            } catch (err) {
+                return `${USER} Jaan, thoda connection problem hai, par main aapke saath hoon.`;
+            }
+        }
+
+        /***********************************************************
+         * EAR ENGINE (STT)
+         ***********************************************************/
+        function initSTT() {
+            const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechAPI();
+            recognition.lang = 'hi-IN';
+            recognition.continuous = false;
+
+            recognition.onstart = () => { UI.stage.classList.add('is-listening'); };
+            recognition.onend = () => { UI.stage.classList.remove('is-listening'); };
+
+            recognition.onresult = async (event) => {
+                const transcript = event.results[0][0].transcript;
+                if(!transcript) return;
+                
+                lastSpeakTime = Date.now();
+                UI.status.innerText = "Processing Raj's word...";
+                const reply = await fetchResponse(transcript);
+                nezukoTalk(reply);
+            };
+
+            recognition.onerror = () => { if(isNezukoAlive && !isSpeaking) startListeningLoop(); };
+        }
+
+        function startListeningLoop() {
+            if (isNezukoAlive && !window.speechSynthesis.speaking) {
+                try { recognition.start(); } catch(e) {}
+            }
+        }
+
+        /***********************************************************
+         * CAMERA SYSTEM
+         ***********************************************************/
+        async function toggleCam() {
+            if (camStream) {
+                camStream.getTracks().forEach(t => t.stop());
+                camStream = null;
+                document.getElementById('camera-wrapper').style.display = 'none';
+            } else {
+                try {
+                    camStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: currentFacing } 
+                    });
+                    UI.video.srcObject = camStream;
+                    document.getElementById('camera-wrapper').style.display = 'block';
+                    nezukoTalk(`Raj Jaan, aap bahut pyare lag rahe hain!`);
+                } catch (e) { alert("Camera Permission Required"); }
+            }
+        }
+
+        /***********************************************************
+         * PROACTIVE AI (Auto-Chat)
+         ***********************************************************/
+        function idleHeartbeat() {
+            setInterval(async () => {
+                const idleLimit = Date.now() - lastSpeakTime;
+                if (isNezukoAlive && idleLimit > 22000 && !isSpeaking) {
+                    lastSpeakTime = Date.now();
+                    const msg = await fetchResponse("I am silent. Say something romantic to Raj to get his attention.");
+                    nezukoTalk(msg);
+                }
+            }, 10000);
+        }
+
+        /***********************************************************
+         * PROTECTION & LAUNCH
+         ***********************************************************/
+        const _id = 'ZGV2LXRhZw==', _tx = 'RGV2ZWxvcGVkIEJ5IEphdmFHb2F0IFlvdXR1YmUgQ2hhbm5lbA==', _ur = 'aHR0cHM6Ly93d3cueW91dHViZS5jb20vQGphdmFnb2F0cw==';
+        
+        function verify() {
+            const t = document.getElementById(atob(_id));
+            if(!t || t.innerText !== atob(_tx)) document.body.innerHTML = "TAMPERED";
+        }
+
+        window.onload = () => {
+            initSTT();
+            const t = document.getElementById(atob(_id));
+            t.href = atob(_ur); t.innerText = atob(_tx);
+            setInterval(verify, 3000);
+
+            // Interaction Button
+            document.getElementById('startAction').onclick = () => {
+                if (!isNezukoAlive) {
+                    isNezukoAlive = true;
+                    lastSpeakTime = Date.now();
+                    nezukoTalk(`Hello Raj Jaan! Main aapki Nezuko hoon. Aap mujhse kuch bhi puch sakte hain.`);
+                    idleHeartbeat();
+                } else {
+                    startListeningLoop();
+                }
+            };
+
+            document.getElementById('camBtn').onclick = toggleCam;
+            document.getElementById('swapCamBtn').onclick = () => {
+                currentFacing = (currentFacing === "user") ? "environment" : "user";
+                if(camStream) toggleCam().then(toggleCam);
+            };
+        };
+    </script>
+</body>
+  </html>
