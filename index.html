@@ -3,192 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Girlfriend Advanced - Maya</title>
-    
-    <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <title>AI Girlfriend - Voice Only Edition</title>
+    <!-- Live2D Widget -->
     <script src="https://unpkg.com/live2d-widget@3.1.4/lib/L2Dwidget.min.js"></script>
-
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; background: #121212; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        body {
+            margin: 0; background: #1e1e2e; color: white;
+            font-family: 'Arial', sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden;
+        }
+        #status-light {
+            width: 15px; height: 15px; border-radius: 50%; background: red;
+            margin-bottom: 10px; box-shadow: 0 0 10px red;
+        }
+        .listening { background: #00ff00 !important; box-shadow: 0 0 10px #00ff00 !important; }
         
-        /* Background UI */
-        #container { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+        #display-box {
+            width: 80%; max-width: 500px; text-align: center;
+            background: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 20px;
+        }
+        #user-text { color: #aaa; font-size: 16px; margin-bottom: 10px; }
+        #ai-text { color: #ffafbd; font-size: 22px; font-weight: bold; }
         
-        /* Video Preview */
-        #webcam-container { position: absolute; top: 20px; right: 20px; width: 160px; height: 120px; border-radius: 12px; border: 2px solid #ff4d6d; overflow: hidden; box-shadow: 0 0 15px rgba(255, 77, 109, 0.5); z-index: 10; }
-        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-
-        /* Chat Display */
-        #display-box { width: 90%; max-width: 600px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); padding: 20px; border-radius: 20px; margin-bottom: 40px; text-align: center; z-index: 5; border: 1px solid rgba(255, 255, 255, 0.1); }
-        .status { font-size: 12px; color: #00ffcc; text-transform: uppercase; margin-bottom: 5px; }
-        .user-txt { font-size: 16px; color: #ccc; margin-bottom: 10px; font-style: italic; }
-        .ai-txt { font-size: 22px; font-weight: bold; color: #ffafbd; text-shadow: 0 0 10px rgba(255,175,189,0.5); }
-
-        /* Initial Start Button */
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #start-btn { padding: 20px 50px; font-size: 24px; background: #ff4d6d; border: none; color: white; border-radius: 50px; cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px rgba(255, 77, 109, 0.6); }
-        
-        /* Emotion Badge */
-        #emotion-badge { position: absolute; top: 150px; right: 20px; background: #ff4d6d; padding: 5px 12px; border-radius: 10px; font-size: 12px; font-weight: bold; }
+        #start-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; align-items: center; justify-content: center;
+            z-index: 99;
+        }
+        button {
+            padding: 15px 40px; font-size: 20px; background: #ff4d6d;
+            color: white; border: none; border-radius: 50px; cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Start Overlay -->
-    <div id="overlay">
-        <button id="start-btn">গার্লফ্রেন্ডকে ডাকুন (Start AI)</button>
+    <div id="start-screen">
+        <button onclick="startApp()">মায়ার সাথে কথা বলুন (Start)</button>
     </div>
 
-    <!-- Interface -->
-    <div id="container">
-        <div id="webcam-container">
-            <video id="video" autoplay muted></video>
-        </div>
-        <div id="emotion-badge">Emotion: Detecting...</div>
+    <div id="status-light"></div>
+    <div id="status-text">সিস্টেম বন্ধ</div>
 
-        <div id="display-box">
-            <div id="status" class="status">সিস্টেম প্রস্তুত করা হচ্ছে...</div>
-            <div id="user-said" class="user-txt"></div>
-            <div id="ai-reply" class="ai-txt">আমি তোমার কথা শোনার জন্য তৈরি।</div>
-        </div>
+    <div id="display-box">
+        <p id="user-text">আপনি যা বলবেন তা এখানে দেখাবে...</p>
+        <p id="ai-text">মায়া যা বলবে তা এখানে দেখাবে...</p>
     </div>
 
     <script>
-        // Configs
-        const GEMINI_API_KEY = "AIzaSyCwIM6y0RgvdLivFUJilbnl92aPKFEwviU";
-        const VOICE_API_URL = "http://31.97.226.11:8000/tts?text=";
-        
-        const video = document.getElementById('video');
-        const status = document.getElementById('status');
-        const userSaid = document.getElementById('user-said');
-        const aiReply = document.getElementById('ai-reply');
-        const emoBadge = document.getElementById('emotion-badge');
-        
-        let currentEmotion = "neutral";
-        let isAiTalking = false;
+        const GEMINI_KEY = "AIzaSyCwIM6y0RgvdLivFUJilbnl92aPKFEwviU";
+        const VOICE_API = "http://31.97.226.11:8000/tts?text=";
 
-        // 1. Live2D Widget Initialize
+        const statusLight = document.getElementById('status-light');
+        const statusText = document.getElementById('status-text');
+        const userDisplay = document.getElementById('user-text');
+        const aiDisplay = document.getElementById('ai-text');
+
+        let recognition;
+        let isSpeaking = false;
+
+        // ১. Live2D মডেল সেটআপ
         L2Dwidget.init({
-            model: { jsonPath: 'https://unpkg.com/live2d-widget-model-shizuku@1.0.5/assets/shizuku.model.json', scale: 1 },
-            display: { position: 'center', width: 500, height: 600, hOffset: 0, vOffset: -100 },
-            mobile: { show: true, scale: 0.5 },
-            react: { opacity: 1 }
+            model: { jsonPath: 'https://unpkg.com/live2d-widget-model-shizuku@1.0.5/assets/shizuku.model.json' },
+            display: { position: 'center', width: 400, height: 500, vOffset: -50 }
         });
 
-        // 2. Load Face Models
-        async function loadModels() {
-            const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/';
-            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
-            status.innerText = "সব রেডি! স্টার্ট বাটনে ক্লিক করো।";
+        // ২. অ্যাপ শুরু করার ফাংশন
+        function startApp() {
+            document.getElementById('start-screen').style.display = 'none';
+            initVoiceInput();
         }
 
-        // 3. Start System
-        document.getElementById('start-btn').onclick = async () => {
-            document.getElementById('overlay').style.display = 'none';
-            await startCamera();
-            startListening();
-            detectEmotion();
-        };
-
-        async function startCamera() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
-            video.srcObject = stream;
-        }
-
-        // 4. Expression Detection
-        async function detectEmotion() {
-            setInterval(async () => {
-                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
-                if (detections.length > 0) {
-                    const expressions = detections[0].expressions;
-                    currentEmotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
-                    emoBadge.innerText = "Emotion: " + currentEmotion.toUpperCase();
-                }
-            }, 1000);
-        }
-
-        // 5. Speech Recognition (Auto-Listen)
-        function startListening() {
+        // ৩. ভয়েস শোনা (Bengali Speech to Text)
+        function initVoiceInput() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
+            recognition = new SpeechRecognition();
             recognition.lang = 'bn-BD';
-            recognition.continuous = false;
+            recognition.continuous = false; // এক বাক্য শুনেই থেমে যাবে যাতে প্রসেস করতে পারে
 
-            recognition.onstart = () => { if(!isAiTalking) status.innerText = "আমি শুনছি..."; };
-            
+            recognition.onstart = () => {
+                if (!isSpeaking) {
+                    statusLight.classList.add('listening');
+                    statusText.innerText = "আমি শুনছি...";
+                }
+            };
+
             recognition.onresult = async (event) => {
-                if (isAiTalking) return;
-                const transcript = event.results[0][0].transcript;
-                userSaid.innerText = "তুমি: " + transcript;
-                await getAIResponse(transcript);
+                const text = event.results[0][0].transcript;
+                userDisplay.innerText = "তুমি: " + text;
+                await getGeminiResponse(text);
             };
 
             recognition.onend = () => {
-                if (!isAiTalking) recognition.start();
+                // যদি এআই কথা না বলে, তবে আবার শোনা শুরু করো
+                if (!isSpeaking) {
+                    recognition.start();
+                }
+            };
+
+            recognition.onerror = (e) => {
+                console.log("Error:", e);
+                if (!isSpeaking) recognition.start();
             };
 
             recognition.start();
         }
 
-        // 6. Gemini API Interaction
-        async function getAIResponse(prompt) {
-            isAiTalking = true;
-            status.innerText = "মায়া ভাবছে...";
+        // ৪. Gemini AI থেকে উত্তর আনা
+        async function getGeminiResponse(userInput) {
+            isSpeaking = true; // শোনা বন্ধ করো
+            statusLight.classList.remove('listening');
+            statusText.innerText = "ভাবছি...";
 
-            // সিস্টেমকে বলা হচ্ছে সে আপনার গার্লফ্রেন্ড এবং আপনার ইমোশন সে জানে
-            const fullPrompt = `You are a very sweet, romantic Bengali girl named Maya. You are the user's girlfriend. The user is currently feeling ${currentEmotion}. Respond to this in Bengali: "${prompt}". Keep it short and sweet.`;
-
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
             
             try {
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] })
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `You are Maya, a sweet Bengali girlfriend. Keep your answer short (max 15 words). Answer in Bengali only. User said: ${userInput}` }] }]
+                    })
                 });
 
                 const data = await response.json();
-                const aiResponseText = data.candidates[0].content.parts[0].text;
+                const reply = data.candidates[0].content.parts[0].text;
                 
-                aiReply.innerText = aiResponseText;
-                await playVoice(aiResponseText);
+                aiDisplay.innerText = "মায়া: " + reply;
+                await talk(reply);
 
-            } catch (err) {
-                console.error(err);
-                status.innerText = "কানেকশন এরর!";
-                isAiTalking = false;
+            } catch (error) {
+                console.error("Gemini Error:", error);
+                isSpeaking = false;
+                recognition.start();
             }
         }
 
-        // 7. Voice Output & Lip Sync Animation
-        function playVoice(text) {
+        // ৫. ভয়েস এপিআই দিয়ে কথা বলানো
+        function talk(text) {
             return new Promise((resolve) => {
-                const audio = new Audio(VOICE_API_URL + encodeURIComponent(text));
+                statusText.innerText = "কথা বলছি...";
                 
-                // Lip sync emulation (Live2D motion)
-                if (L2Dwidget.getWidget()) {
-                    // Simple logic: talking movement
-                    L2Dwidget.getWidget().style.transform = "scale(1.05)";
-                }
-
+                // আপনার দেওয়া ভয়েস এপিআই ইউআরএল
+                const audio = new Audio(VOICE_API + encodeURIComponent(text));
+                
                 audio.onended = () => {
-                    isAiTalking = false;
-                    status.innerText = "আমি শুনছি...";
-                    if (L2Dwidget.getWidget()) L2Dwidget.getWidget().style.transform = "scale(1)";
+                    isSpeaking = false;
+                    statusText.innerText = "শুনছি...";
+                    recognition.start(); // কথা শেষ হলে আবার শোনা শুরু
                     resolve();
                 };
 
-                audio.play().catch(e => {
-                    console.error("Audio block", e);
-                    isAiTalking = false;
+                audio.onerror = () => {
+                    isSpeaking = false;
+                    recognition.start();
                     resolve();
-                });
+                };
+
+                audio.play();
             });
         }
-
-        loadModels();
     </script>
 </body>
 </html>
